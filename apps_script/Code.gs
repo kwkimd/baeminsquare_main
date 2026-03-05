@@ -1,12 +1,18 @@
 /**
  * 배민 CEO 사이트 대시보드 - Google Apps Script Web App
  *
+ * [Apps Script에 추가할 파일]
+ * 1. Code.gs  → 이 파일 (서버 사이드)
+ * 2. Dashboard.html → 대시보드 HTML (클라이언트 사이드)
+ *
  * [배포 방법]
  * 1. Google Sheets 열기 → 확장 프로그램 → Apps Script
- * 2. 이 코드 전체 붙여넣기
- * 3. 배포 → 새 배포 → 유형: 웹 앱
- * 4. 실행 계정: 나(자신), 액세스 권한: 모든 사용자
- * 5. 배포 → URL 복사 → HTML의 APPS_SCRIPT_URL에 붙여넣기
+ * 2. Code.gs에 이 코드 전체 붙여넣기
+ * 3. 왼쪽 + 버튼 → HTML → 이름: Dashboard → dashboard.html 내용 붙여넣기
+ * 4. 배포 → 새 배포 → 유형: 웹 앱
+ *    - 실행 계정: 나(자신)
+ *    - 액세스 권한: woowahan.com의 모든 사용자
+ * 5. 배포 URL = 대시보드 URL (그대로 공유)
  */
 
 const SHEET_ID = '1-UUoGn9bI3fy2EULVI3j3QCI3hXMsm1B2mIHQcLUq2k';
@@ -21,28 +27,36 @@ const SHEET_MAP = {
   'device':   '디바이스별'
 };
 
+// ── 진입점: HTML 서빙 또는 JSON 반환 ──────────────────────
 function doGet(e) {
-  const callback = e.parameter.callback; // JSONP 지원
-  const sheet    = e.parameter.sheet || 'all';
+  const sheet = e.parameter.sheet;
 
-  let result;
-  try {
-    result = sheet === 'all' ? getAllData() : getSheetData(sheet);
-  } catch(err) {
-    result = { error: err.toString() };
+  // ?sheet=all 또는 ?sheet=<key> → JSON 반환 (테스트용)
+  if (sheet) {
+    let result;
+    try {
+      result = sheet === 'all' ? getAllData() : getSheetData(sheet);
+    } catch(err) {
+      result = { error: err.toString() };
+    }
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 
-  const json = JSON.stringify(result);
-  const output = callback
-    ? ContentService.createTextOutput(`${callback}(${json})`)
-        .setMimeType(ContentService.MimeType.JAVASCRIPT)
-    : ContentService.createTextOutput(json)
-        .setMimeType(ContentService.MimeType.JSON);
-
-  return output;
+  // 파라미터 없음 → 대시보드 HTML 서빙
+  return HtmlService
+    .createHtmlOutputFromFile('Dashboard')
+    .setTitle('배민 CEO 사이트 · 콘텐츠 집중도 대시보드')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// 전체 시트 데이터 반환
+// ── 클라이언트(google.script.run) 에서 호출되는 함수 ───────
+function getAllDataForClient() {
+  return getAllData();
+}
+
+// ── 전체 시트 데이터 반환 ──────────────────────────────────
 function getAllData() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const result = {};
@@ -57,7 +71,7 @@ function getAllData() {
   return result;
 }
 
-// 특정 시트 데이터 반환
+// ── 특정 시트 데이터 반환 ──────────────────────────────────
 function getSheetData(key) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const sheetName = SHEET_MAP[key];
@@ -65,7 +79,7 @@ function getSheetData(key) {
   return fetchSheetRows(ss, sheetName);
 }
 
-// 시트 → 행 배열 변환
+// ── 시트 → 행 배열 변환 ───────────────────────────────────
 function fetchSheetRows(ss, sheetName) {
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return [];
@@ -76,11 +90,9 @@ function fetchSheetRows(ss, sheetName) {
 
   const values = sheet.getRange(1, 1, lastRow, lastCol).getValues();
 
-  // 빈 행 제거 후 반환
   return values
     .filter(row => row[0] !== '' && row[0] !== null && row[0] !== undefined)
     .map(row => row.map(cell => {
-      // Date 객체 처리
       if (cell instanceof Date) return Utilities.formatDate(cell, 'Asia/Seoul', 'yyyy-MM-dd');
       return cell;
     }));
