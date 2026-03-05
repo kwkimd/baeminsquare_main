@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>배민 CEO 사이트 · 콘텐츠 집중도 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --mint:#00C4B3; --mint-light:#E6FAF8; --mint-dark:#009E8F;
+    --yellow:#F0A500; --yellow-light:#FEF6E4;
+    --red:#FF4D4F; --red-light:#FFF1F0;
+    --bg:#F5F6FA; --border:#E8E9EE; --white:#FFFFFF;
+    --text:#1A1A2E; --sub:#6B7280;
+    --shadow:0 2px 12px rgba(0,0,0,0.07);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text)}
+
+  /* HEADER */
+  .header{background:linear-gradient(135deg,#009E8F,#00C4B3);padding:24px 40px;display:flex;align-items:center;justify-content:space-between}
+  .header h1{color:#fff;font-size:20px;font-weight:700}
+  .header p{color:rgba(255,255,255,.8);font-size:12px;margin-top:4px}
+  .header-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .badge{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600}
+  .btn-update{background:var(--yellow);color:#1A1A2E;border:none;padding:7px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s}
+  .btn-update:hover{opacity:.85}
+  .btn-update:disabled{opacity:.5;cursor:not-allowed}
+
+  /* LOADING / ERROR */
+  .status-bar{padding:10px 40px;font-size:12px;display:flex;align-items:center;gap:8px}
+  .status-bar.loading{color:var(--mint-dark);background:var(--mint-light)}
+  .status-bar.error{color:var(--red);background:var(--red-light)}
+  .status-bar.ok{color:#166534;background:#F0FDF4}
+  .spinner{width:14px;height:14px;border:2px solid var(--mint-light);border-top-color:var(--mint-dark);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ALERT */
+  .alert{margin:16px 40px 0;background:var(--red-light);border:1.5px solid var(--red);border-radius:10px;padding:12px 18px;font-size:12px;display:flex;gap:8px;align-items:center}
+
+  /* DASHBOARD */
+  .dashboard{padding:20px 40px 40px}
+
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+  .kpi{background:var(--white);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden}
+  .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--mint)}
+  .kpi.warn::before{background:var(--red)}
+  .kpi.gold::before{background:var(--yellow)}
+  .kpi-label{font-size:11px;color:var(--sub);margin-bottom:6px}
+  .kpi-val{font-size:28px;font-weight:800;letter-spacing:-1px}
+  .kpi-val.red{color:var(--red)} .kpi-val.mint{color:var(--mint-dark)}
+  .kpi-note{font-size:10px;color:var(--sub);margin-top:3px}
+  .kpi-tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;margin-top:5px}
+  .tag-red{background:var(--red-light);color:var(--red)}
+  .tag-mint{background:var(--mint-light);color:var(--mint-dark)}
+  .tag-gold{background:var(--yellow-light);color:#92400E}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+  .full{margin-bottom:18px}
+
+  .card{background:var(--white);border-radius:12px;padding:20px 22px;box-shadow:var(--shadow);border:1px solid var(--border)}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+  .card-title{font-size:13px;font-weight:700}
+  .card-sub{font-size:11px;color:var(--sub);margin-top:2px}
+  .c-tag{font-size:10px;font-weight:600;padding:3px 8px;border-radius:8px;white-space:nowrap}
+  .c-tag.mint{background:var(--mint-light);color:var(--mint-dark)}
+  .c-tag.red{background:var(--red-light);color:var(--red)}
+  .c-tag.gold{background:var(--yellow-light);color:#92400E}
+
+  .slot-legend{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;font-size:10px}
+  .s-tag{padding:2px 8px;border-radius:8px;font-weight:600}
+
+  .insight-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+  .insight{background:var(--white);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);border-left:4px solid var(--mint)}
+  .insight.warn{border-left-color:var(--red)}
+  .insight.gold{border-left-color:var(--yellow)}
+  .ins-label{font-size:10px;color:var(--sub);margin-bottom:5px}
+  .ins-text{font-size:12px;line-height:1.6}
+  .ins-text strong{color:var(--mint-dark)}
+  .insight.warn .ins-text strong{color:var(--red)}
+
+  .footer{text-align:center;padding:16px;font-size:11px;color:var(--sub);border-top:1px solid var(--border)}
+  .footer a{color:var(--mint-dark);text-decoration:none}
+
+  canvas{display:block}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <h1>🍴 배민 CEO 사이트 · 메인페이지 콘텐츠 집중도 대시보드</h1>
+    <p>핵심 슬롯: 215·216·217·218·238 &nbsp;|&nbsp; DB: sblog.log_ceo_site</p>
+  </div>
+  <div class="header-right">
+    <span class="badge" id="lastUpdate">데이터 로딩 중...</span>
+    <button class="btn-update" id="btnRefresh" onclick="loadData()" disabled>🔄 데이터 새로고침</button>
+  </div>
+</div>
+
+<!-- STATUS -->
+<div class="status-bar loading" id="statusBar">
+  <span class="spinner"></span> Google Sheets에서 데이터를 불러오는 중입니다...
+</div>
+
+<!-- ALERT -->
+<div class="alert" id="alertBanner" style="display:none">
+  <span>🚨</span>
+  <div id="alertText"></div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard">
+
+  <!-- KPI -->
+  <div class="kpi-row" id="kpiRow">
+    <div class="kpi warn">
+      <div class="kpi-label">📊 이탈률 (최신)</div>
+      <div class="kpi-val red" id="kBounce">—</div>
+      <div class="kpi-note" id="kBounceNote">데이터 로딩 중</div>
+      <span class="kpi-tag tag-red">⚠ 기준 50% 초과</span>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">👥 재방문률 (최신)</div>
+      <div class="kpi-val mint" id="kRevisit">—</div>
+      <div class="kpi-note" id="kRevisitNote">데이터 로딩 중</div>
+      <span class="kpi-tag tag-mint" id="kRevisitTag">기준 20% 이상</span>
+    </div>
+    <div class="kpi gold">
+      <div class="kpi-label">🖱 핵심 슬롯 최고 CTR</div>
+      <div class="kpi-val" id="kCTR" style="color:var(--yellow)">—</div>
+      <div class="kpi-note" id="kCTRNote">데이터 로딩 중</div>
+      <span class="kpi-tag tag-gold" id="kCTRTag">—</span>
+    </div>
+    <div class="kpi warn">
+      <div class="kpi-label">📱 모바일 이탈률 (최신)</div>
+      <div class="kpi-val red" id="kMob">—</div>
+      <div class="kpi-note" id="kMobNote">데이터 로딩 중</div>
+      <span class="kpi-tag tag-red">PC 대비 비교</span>
+    </div>
+  </div>
+
+  <!-- Q1 + Q5 -->
+  <div class="grid2">
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Q1. 이탈률 추이</div><div class="card-sub">bm_session_id 기준 · 기간별</div></div>
+        <span class="c-tag red">기준: 50% 경고</span>
+      </div>
+      <canvas id="cBounce" height="200"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Q5. 재방문률 & 평균 방문횟수</div><div class="card-sub">mem_no 기준 2회 이상</div></div>
+        <span class="c-tag mint">기준: 20% 미만 경고</span>
+      </div>
+      <canvas id="cRevisit" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Q2 + Q3 -->
+  <div class="grid2">
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Q2. 스크롤 깊이 분포</div><div class="card-sub">구간별 도달 세션 수</div></div>
+        <span class="c-tag gold">100% 도달 강조</span>
+      </div>
+      <canvas id="cScroll" height="200"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Q3. 핵심 슬롯별 CTR</div><div class="card-sub">SlotId 215·216·217·218·238</div></div>
+        <span class="c-tag mint">노출 대비 클릭률</span>
+      </div>
+      <div class="slot-legend">
+        <span class="s-tag" style="background:#E6FAF8;color:#009E8F">215 최신소식</span>
+        <span class="s-tag" style="background:#FEF6E4;color:#B07800">216 비즈팁</span>
+        <span class="s-tag" style="background:#EEF2FF;color:#4F46E5">217 노하우</span>
+        <span class="s-tag" style="background:#FFF1F0;color:#CF1322">218 Q&A</span>
+        <span class="s-tag" style="background:#F0FFF4;color:#276749">238 숏폼</span>
+      </div>
+      <canvas id="cCTR" height="175"></canvas>
+    </div>
+  </div>
+
+  <!-- Q4 체류시간 -->
+  <div class="full card">
+    <div class="card-head">
+      <div><div class="card-title">Q4. 화면별 평균 체류시간 (상위 10)</div><div class="card-sub">DwellTime · PageDwellTime 평균(초)</div></div>
+      <span class="c-tag gold">목표: 90초</span>
+    </div>
+    <canvas id="cDwell" height="200"></canvas>
+  </div>
+
+  <!-- Q6 업종별 -->
+  <div class="full card">
+    <div class="card-head">
+      <div><div class="card-title">Q6. 업종별 클릭수 vs 체류시간</div><div class="card-sub">최신 기간 · X: 클릭수 / Y: 체류(초)</div></div>
+      <span class="c-tag mint">버블 크기 = 상대 클릭수</span>
+    </div>
+    <canvas id="cCategory" height="260"></canvas>
+  </div>
+
+  <!-- Q7 디바이스 -->
+  <div class="full card">
+    <div class="card-head">
+      <div><div class="card-title">Q7. PC vs 모바일 행동 비교</div><div class="card-sub">이탈률 · 체류시간 · CTR</div></div>
+      <span class="c-tag mint">pc vs mob</span>
+    </div>
+    <canvas id="cDevice" height="200"></canvas>
+  </div>
+
+  <!-- 인사이트 -->
+  <div class="insight-row">
+    <div class="insight warn">
+      <div class="ins-label">🚨 핵심 문제</div>
+      <div class="ins-text" id="insAlert">데이터 로딩 중...</div>
+    </div>
+    <div class="insight gold">
+      <div class="ins-label">📌 CTR 인사이트</div>
+      <div class="ins-text" id="insCTR">데이터 로딩 중...</div>
+    </div>
+    <div class="insight">
+      <div class="ins-label">💡 개선 액션</div>
+      <div class="ins-text" id="insAction">데이터 로딩 중...</div>
+    </div>
+  </div>
+
+</div><!-- /dashboard -->
+
+<div class="footer">
+  배민 CEO 사이트 · 콘텐츠 집중도 대시보드 &nbsp;|&nbsp;
+  <a href="https://github.com/kwkimd/baeminsquare_main" target="_blank">GitHub</a> &nbsp;|&nbsp;
+  데이터: Google Sheets 자동 연동
+</div>
+
+<script>
+const CORE_SLOTS = ['215','216','217','218','238'];
+const SLOT_NAMES = { '215':'최신소식', '216':'비즈팁', '217':'노하우', '218':'Q&A', '238':'숏폼' };
+const SLOT_COLORS = { '215':'#00C4B3', '216':'#F0A500', '217':'#7C3AED', '218':'#FF4D4F', '238':'#10B981' };
+const MINT='#00C4B3', YELLOW='#F0A500', RED='#FF4D4F';
+
+const charts = {};
+
+Chart.defaults.font.family = "'Apple SD Gothic Neo','Noto Sans KR',sans-serif";
+Chart.defaults.color = '#6B7280';
+
+// ── 상태 표시 ──────────────────────────────────────────
+function setStatus(type, msg) {
+  const el = document.getElementById('statusBar');
+  el.className = 'status-bar ' + type;
+  el.innerHTML = type === 'loading'
+    ? `<span class="spinner"></span> ${msg}`
+    : msg;
+}
+
+// ── 데이터 로드 (google.script.run) ───────────────────
+function loadData() {
+  const btn = document.getElementById('btnRefresh');
+  btn.disabled = true;
+  setStatus('loading', 'Google Sheets에서 데이터를 불러오는 중...');
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      document.getElementById('lastUpdate').textContent =
+        data._updated ? data._updated.slice(0,16).replace('T',' ') : '최신';
+      setStatus('ok', '✅ 데이터 업데이트 완료 — ' + (data._updated || ''));
+      renderAll(data);
+      btn.disabled = false;
+    })
+    .withFailureHandler(function(err) {
+      setStatus('error', '❌ Sheets 연동 오류: ' + (err.message || err));
+      btn.disabled = false;
+    })
+    .getAllDataForClient();
+}
+
+// ── 전체 렌더 ──────────────────────────────────────────
+function renderAll(d) {
+  renderBounce(d.bounce || []);
+  renderRevisit(d.revisit || []);
+  renderScroll(d.scroll || []);
+  renderCTR(d.ctr || []);
+  renderDwell(d.dwell || []);
+  renderCategory(d.category || []);
+  renderDevice(d.device || []);
+  updateKPI(d);
+  updateInsights(d);
+}
+
+function makeChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), config);
+  return charts[id];
+}
+
+// ── Q1 이탈률 ──────────────────────────────────────────
+function renderBounce(rows) {
+  const seen = new Set();
+  const filtered = rows.filter(r => {
+    const p = String(r[0]);
+    if (seen.has(p)) return false;
+    seen.add(p);
+    return !p.match(/^\d{4}-\d{2}-\d{2}$/);
+  });
+  makeChart('cBounce', {
+    type: 'line',
+    data: {
+      labels: filtered.map(r => r[0]),
+      datasets: [
+        { label:'이탈률(%)', data: filtered.map(r => +r[3]),
+          borderColor:RED, backgroundColor:'rgba(255,77,79,.08)',
+          borderWidth:2.5, pointRadius:5, fill:true, tension:.3 },
+        { label:'경고 기준(50%)', data: filtered.map(()=>50),
+          borderColor:YELLOW, borderWidth:1.5, borderDash:[6,4],
+          pointRadius:0, fill:false }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales:{ y:{min:30,max:95,ticks:{callback:v=>v+'%'},grid:{color:'#F0F0F5'}},
+               x:{grid:{display:false}} },
+      plugins:{ legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}} } }
+  });
+}
+
+// ── Q5 재방문률 ────────────────────────────────────────
+function renderRevisit(rows) {
+  const seen = new Set();
+  const filtered = rows.filter(r => {
+    const p = String(r[0]);
+    if (seen.has(p)) return false; seen.add(p); return true;
+  });
+  makeChart('cRevisit', {
+    type: 'bar',
+    data: {
+      labels: filtered.map(r => r[0]),
+      datasets: [
+        { label:'재방문률(%)', data: filtered.map(r => +r[3]),
+          backgroundColor: filtered.map(r => +r[3] < 20 ? 'rgba(255,77,79,.7)' : 'rgba(0,196,179,.7)'),
+          borderRadius:5, yAxisID:'y' },
+        { label:'평균 방문횟수', data: filtered.map(r => parseFloat(r[4])),
+          type:'line', borderColor:YELLOW, backgroundColor:'transparent',
+          borderWidth:2, pointRadius:4, pointBackgroundColor:YELLOW, yAxisID:'y2' }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales:{ y:{position:'left',ticks:{callback:v=>v+'%'},grid:{color:'#F0F0F5'}},
+               y2:{position:'right',grid:{display:false},ticks:{callback:v=>v+'회'}},
+               x:{grid:{display:false}} },
+      plugins:{ legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}} } }
+  });
+}
+
+// ── Q2 스크롤 깊이 ─────────────────────────────────────
+function renderScroll(rows) {
+  const periods = [...new Set(rows.map(r => r[0]))].sort().reverse();
+  const latestPeriod = periods[0];
+  const filtered = rows.filter(r => r[0] === latestPeriod).sort((a,b) => +a[1] - +b[1]);
+  makeChart('cScroll', {
+    type: 'bar',
+    data: {
+      labels: filtered.map(r => r[1] + '%'),
+      datasets: [
+        { label:'도달 세션',
+          data: filtered.map(r => +r[2]),
+          backgroundColor: filtered.map(r => +r[1] === 100 ? 'rgba(0,196,179,.85)' : 'rgba(0,196,179,.35)'),
+          borderColor: filtered.map(r => +r[1] === 100 ? MINT : 'rgba(0,196,179,.5)'),
+          borderWidth:1.5, borderRadius:5, yAxisID:'y' },
+        { label:'도달률(%)',
+          data: filtered.map(r => +r[3]),
+          type:'line', borderColor:YELLOW, backgroundColor:'transparent',
+          borderWidth:2, pointRadius:4, pointBackgroundColor:YELLOW, yAxisID:'y2' }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales:{ y:{position:'left',grid:{color:'#F0F0F5'}},
+               y2:{position:'right',grid:{display:false},ticks:{callback:v=>v+'%'}},
+               x:{grid:{display:false}} },
+      plugins:{ legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}},
+        title:{ display:true, text:`기간: ${latestPeriod}`, font:{size:10}, color:'#6B7280', position:'bottom' } } }
+  });
+}
+
+// ── Q3 CTR ────────────────────────────────────────────
+function renderCTR(rows) {
+  const agg = {};
+  for (const s of CORE_SLOTS) agg[s] = { imp:0, clk:0 };
+  for (const row of rows) {
+    const sid = String(row[1]);
+    if (!agg[sid]) continue;
+    agg[sid].imp += +row[5] || 0;
+    agg[sid].clk += +row[6] || 0;
+  }
+  const ordered = CORE_SLOTS
+    .map(s => ({ s, ctr: agg[s].imp > 0 ? agg[s].clk/agg[s].imp*100 : 0 }))
+    .sort((a,b) => b.ctr - a.ctr);
+  makeChart('cCTR', {
+    type: 'bar',
+    data: {
+      labels: ordered.map(o => `${o.s} ${SLOT_NAMES[o.s]}`),
+      datasets: [{
+        label:'CTR(%)',
+        data: ordered.map(o => +o.ctr.toFixed(2)),
+        backgroundColor: ordered.map(o => SLOT_COLORS[o.s] + '33'),
+        borderColor: ordered.map(o => SLOT_COLORS[o.s]),
+        borderWidth:2, borderRadius:5
+      }]
+    },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      scales:{ x:{ticks:{callback:v=>v+'%'},grid:{color:'#F0F0F5'}},
+               y:{grid:{display:false}} },
+      plugins:{ legend:{display:false} } }
+  });
+}
+
+// ── Q4 체류시간 ────────────────────────────────────────
+function renderDwell(rows) {
+  const seen = new Set();
+  const unique = rows.filter(r => { const k=r[1]; if(seen.has(k)) return false; seen.add(k); return true; });
+  const top10 = unique.sort((a,b) => +b[3] - +a[3]).slice(0,10).reverse();
+  makeChart('cDwell', {
+    type: 'bar',
+    data: {
+      labels: top10.map(r => r[1]),
+      datasets: [
+        { label:'평균 체류(초)',
+          data: top10.map(r => +r[3]),
+          backgroundColor: top10.map(r => +r[3] >= 90 ? 'rgba(0,196,179,.75)' : 'rgba(240,165,0,.65)'),
+          borderRadius:5, yAxisID:'y' },
+        { label:'목표선(90초)',
+          data: top10.map(()=>90),
+          type:'line', borderColor:MINT, borderWidth:1.5, borderDash:[6,4],
+          pointRadius:0, fill:false, yAxisID:'y' }
+      ]
+    },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      scales:{ x:{ticks:{callback:v=>v+'초'},grid:{color:'#F0F0F5'}},
+               y:{grid:{display:false},ticks:{font:{size:10}}} },
+      plugins:{ legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}} } }
+  });
+}
+
+// ── Q6 업종별 버블 ─────────────────────────────────────
+function renderCategory(rows) {
+  const COLORS = ['#00C4B3','#F0A500','#FF4D4F','#7C3AED','#10B981','#F97316','#0EA5E9','#EC4899','#84CC16','#6366F1'];
+  const periods = [...new Set(rows.map(r => r[0]))].sort().reverse();
+  const latest = periods[0];
+  const filtered = rows.filter(r => r[0] === latest && r[1]);
+  makeChart('cCategory', {
+    type: 'bubble',
+    data: {
+      datasets: filtered.map((r,i) => ({
+        label: r[1],
+        data: [{ x:+r[2], y:+r[3], r: Math.max(4, Math.min(20, Math.sqrt(+r[2])*1.2)) }],
+        backgroundColor: COLORS[i%COLORS.length]+'55',
+        borderColor: COLORS[i%COLORS.length],
+        borderWidth:2
+      }))
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{ title:{display:true,text:'클릭수',font:{size:10}}, grid:{color:'#F0F0F5'} },
+        y:{ title:{display:true,text:'체류시간(초)',font:{size:10}}, grid:{color:'#F0F0F5'} }
+      },
+      plugins:{
+        legend:{position:'right',labels:{boxWidth:10,font:{size:10}}},
+        tooltip:{ callbacks:{ label: ctx => ` ${ctx.dataset.label} | 클릭 ${ctx.raw.x} | 체류 ${ctx.raw.y}초` } }
+      }
+    }
+  });
+}
+
+// ── Q7 디바이스 ────────────────────────────────────────
+function renderDevice(rows) {
+  const periods = [...new Set(rows.map(r => r[0]))].sort().reverse();
+  const latest = periods[0];
+  const pRows = rows.filter(r => r[0] === latest);
+  const pc  = pRows.find(r => r[1]==='pc')  || [0,0,0,0,0,0,0,0];
+  const mob = pRows.find(r => r[1]==='mob') || [0,0,0,0,0,0,0,0];
+  makeChart('cDevice', {
+    type: 'bar',
+    data: {
+      labels: ['이탈률(%)', '평균 체류(초)', 'CTR(%)×100', '세션수(만)'],
+      datasets: [
+        { label:'PC',  data:[+pc[3],+pc[4],(+pc[7])*100,(+pc[2]/10000).toFixed(1)],
+          backgroundColor:'rgba(0,196,179,.7)', borderColor:MINT, borderWidth:1.5, borderRadius:5 },
+        { label:'모바일', data:[+mob[3],+mob[4],(+mob[7])*100,(+mob[2]/10000).toFixed(1)],
+          backgroundColor:'rgba(240,165,0,.7)', borderColor:YELLOW, borderWidth:1.5, borderRadius:5 }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales:{ y:{grid:{color:'#F0F0F5'}}, x:{grid:{display:false}} },
+      plugins:{ legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}},
+        title:{ display:true, text:`기간: ${latest}`, font:{size:10}, color:'#6B7280', position:'bottom' } } }
+  });
+}
+
+// ── KPI 업데이트 ───────────────────────────────────────
+function updateKPI(d) {
+  const bounceRows = d.bounce || [];
+  if (bounceRows.length) {
+    const latest = bounceRows.reduce((a,b) => (String(a[0]) > String(b[0]) ? a : b));
+    document.getElementById('kBounce').textContent = (+latest[3]).toFixed(1) + '%';
+    document.getElementById('kBounceNote').textContent = '기간: ' + latest[0];
+    if (+latest[3] > 50) {
+      document.getElementById('alertBanner').style.display = 'flex';
+      document.getElementById('alertText').innerHTML =
+        `<strong>이탈률 경고</strong> — ${latest[0]} 기준 <strong>${(+latest[3]).toFixed(1)}%</strong>로 기준치(50%) 초과. 즉시 개선 필요!`;
+    }
+  }
+  const revisitRows = d.revisit || [];
+  if (revisitRows.length) {
+    const seen = new Set(); const uniq = revisitRows.filter(r=>{ if(seen.has(r[0])) return false; seen.add(r[0]); return true; });
+    const latest = uniq.reduce((a,b)=>(String(a[0])>String(b[0])?a:b));
+    const rate = +latest[3];
+    document.getElementById('kRevisit').textContent = rate.toFixed(1) + '%';
+    document.getElementById('kRevisitNote').textContent = '기간: ' + latest[0];
+    document.getElementById('kRevisitTag').textContent = rate < 20 ? '⚠ 20% 미만 위험' : '✓ 기준 이상 양호';
+    document.getElementById('kRevisitTag').className = 'kpi-tag ' + (rate < 20 ? 'tag-red' : 'tag-mint');
+  }
+  const ctrRows = d.ctr || [];
+  if (ctrRows.length) {
+    const agg = {};
+    for (const s of CORE_SLOTS) agg[s]={imp:0,clk:0};
+    for (const r of ctrRows) { const sid=String(r[1]); if(agg[sid]){agg[sid].imp+=+r[5]||0;agg[sid].clk+=+r[6]||0;} }
+    let best = {s:'-',ctr:0};
+    for (const s of CORE_SLOTS) {
+      const ctr = agg[s].imp > 0 ? agg[s].clk/agg[s].imp*100 : 0;
+      if (ctr > best.ctr) best = {s, ctr};
+    }
+    document.getElementById('kCTR').textContent = best.ctr.toFixed(2) + '%';
+    document.getElementById('kCTRNote').textContent = `슬롯 ${best.s} · ${SLOT_NAMES[best.s]||''}`;
+    document.getElementById('kCTRTag').textContent = `슬롯 ${CORE_SLOTS.find(s=>s!==best.s&&agg[s].imp>0&&agg[s].clk/agg[s].imp*100===Math.min(...CORE_SLOTS.map(ss=>agg[ss].imp>0?agg[ss].clk/agg[ss].imp*100:99)))} 최저`;
+  }
+  const devRows = d.device || [];
+  if (devRows.length) {
+    const periods = [...new Set(devRows.map(r=>r[0]))].sort().reverse();
+    const latest = periods[0];
+    const mob = devRows.find(r=>r[0]===latest && r[1]==='mob');
+    const pc  = devRows.find(r=>r[0]===latest && r[1]==='pc');
+    if (mob) {
+      document.getElementById('kMob').textContent = (+mob[3]).toFixed(1) + '%';
+      document.getElementById('kMobNote').textContent = `PC ${pc ? (+pc[3]).toFixed(1)+'%' : '—'} 대비`;
+    }
+  }
+}
+
+// ── 인사이트 업데이트 ──────────────────────────────────
+function updateInsights(d) {
+  const br = (d.bounce||[]);
+  const seen=new Set(); const ubr=br.filter(r=>{if(seen.has(r[0]))return false;seen.add(r[0]);return!String(r[0]).match(/^\d{4}-\d{2}-\d{2}$/)});
+  const latestBounce = ubr.length ? ubr.reduce((a,b)=>String(a[0])>String(b[0])?a:b) : null;
+
+  const dr=d.device||[]; const periods=[...new Set(dr.map(r=>r[0]))].sort().reverse();
+  const latestPeriod=periods[0];
+  const mob=dr.find(r=>r[0]===latestPeriod&&r[1]==='mob');
+  const scrollRows=(d.scroll||[]).filter(r=>r[0]===latestPeriod&&+r[1]===100);
+  const scroll100 = scrollRows.length ? scrollRows[0][3] : '—';
+
+  document.getElementById('insAlert').innerHTML =
+    `이탈률 <strong>${latestBounce ? (+latestBounce[3]).toFixed(1)+'%' : '—'}</strong> (기준 50% 초과)<br>모바일 이탈률 <strong>${mob ? (+mob[3]).toFixed(1)+'%' : '—'}</strong><br>스크롤 100% 도달: <strong>${scroll100}%</strong>`;
+
+  const agg={};
+  for(const s of CORE_SLOTS) agg[s]={imp:0,clk:0};
+  for(const r of d.ctr||[]) { const sid=String(r[1]); if(agg[sid]){agg[sid].imp+=+r[5]||0;agg[sid].clk+=+r[6]||0;} }
+  const ctrs=CORE_SLOTS.map(s=>({s,ctr:agg[s].imp>0?agg[s].clk/agg[s].imp*100:0})).sort((a,b)=>b.ctr-a.ctr);
+  document.getElementById('insCTR').innerHTML =
+    `슬롯${ctrs[0].s}(<strong>${ctrs[0].ctr.toFixed(2)}%</strong>) 최고<br>슬롯${ctrs[ctrs.length-1].s}(<strong>${ctrs[ctrs.length-1].ctr.toFixed(2)}%</strong>) 최저<br>최저 슬롯 제목·썸네일 개선 필요`;
+
+  const catRows=(d.category||[]).filter(r=>r[0]===[...new Set((d.category||[]).map(r=>r[0]))].sort().reverse()[0]&&r[1]);
+  const topDwell=catRows.sort((a,b)=>+b[3]-+a[3]).slice(0,2).map(r=>`${r[1]}(${r[3]}초)`).join('·');
+  document.getElementById('insAction').innerHTML =
+    `<strong>${topDwell}</strong> 업종 콘텐츠 상단 배치<br>모바일 첫 화면 콘텐츠 훅 강화<br>구독·푸시로 재방문 루프 강화`;
+}
+
+// ── 초기 로드 ──────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
