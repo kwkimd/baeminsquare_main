@@ -35,6 +35,13 @@
   .spinner{width:12px;height:12px;border:2px solid var(--mint-light);border-top-color:var(--mint-dark);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
   @keyframes spin{to{transform:rotate(360deg)}}
 
+  /* PERIOD TABS */
+  .period-tab-wrap{background:var(--white);border-bottom:1px solid var(--border);padding:0 40px;display:flex;align-items:center;gap:0}
+  .tab-btn{padding:11px 28px;font-size:13px;font-weight:600;border:none;background:transparent;color:var(--sub);cursor:pointer;border-bottom:3px solid transparent;transition:.15s;margin-bottom:-1px}
+  .tab-btn:hover{color:var(--mint-dark)}
+  .tab-btn.active{color:var(--mint-dark);border-bottom-color:var(--mint)}
+  .tab-label{margin-left:auto;font-size:11px;color:var(--sub);padding:8px 0}
+
   /* ALERT */
   .alert{margin:12px 40px 0;background:var(--red-light);border:1.5px solid var(--red);border-radius:10px;padding:10px 16px;font-size:12px;display:flex;gap:8px;align-items:center}
 
@@ -51,6 +58,7 @@
   .kpi-val{font-size:26px;font-weight:800;letter-spacing:-1px;line-height:1.1}
   .kpi-val.red{color:var(--red)} .kpi-val.mint{color:var(--mint-dark)}
   .kpi-note{font-size:10px;color:var(--sub);margin-top:3px}
+  .kpi-change{font-size:11px;font-weight:600;margin-top:4px}
   .kpi-tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;margin-top:4px}
   .tag-red{background:var(--red-light);color:var(--red)}
   .tag-mint{background:var(--mint-light);color:var(--mint-dark)}
@@ -73,23 +81,31 @@
   .slot-legend{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;font-size:10px}
   .s-tag{padding:2px 7px;border-radius:8px;font-weight:600}
 
-  /* ── 차트 래퍼: 고정 높이로 chart.js 크기 제어 ── */
+  /* 차트 래퍼 */
   .chart-wrap{position:relative;width:100%}
-  .h-200{height:200px}
-  .h-240{height:240px}
-  .h-280{height:280px}
-  .h-300{height:300px}
-  .h-400{height:400px}
+  .h-200{height:200px} .h-240{height:240px} .h-280{height:280px}
+  .h-300{height:300px} .h-400{height:400px}
 
   /* INSIGHT */
   .insight-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
-  .insight{background:var(--white);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);border-left:4px solid var(--mint)}
+  .insight{background:var(--white);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);border-left:4px solid var(--mint)}
   .insight.warn{border-left-color:var(--red)}
   .insight.gold{border-left-color:var(--yellow)}
-  .ins-label{font-size:10px;color:var(--sub);margin-bottom:4px}
-  .ins-text{font-size:12px;line-height:1.6}
+  .ins-label{font-size:10px;color:var(--sub);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .ins-title{font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text)}
+  .ins-text{font-size:12px;line-height:1.7;color:#374151}
   .ins-text strong{color:var(--mint-dark)}
   .insight.warn .ins-text strong{color:var(--red)}
+  .ins-divider{border:none;border-top:1px solid var(--border);margin:8px 0}
+
+  /* 변화율 */
+  .up-bad{color:var(--red)}
+  .up-good{color:var(--mint-dark)}
+  .dn-bad{color:var(--red)}
+  .dn-good{color:var(--mint-dark)}
+
+  /* 데이터 없음 */
+  .no-data{display:flex;align-items:center;justify-content:center;height:100%;color:var(--sub);font-size:12px;flex-direction:column;gap:6px}
 
   .footer{text-align:center;padding:14px;font-size:11px;color:var(--sub);border-top:1px solid var(--border)}
   .footer a{color:var(--mint-dark);text-decoration:none}
@@ -114,6 +130,14 @@
   <span class="spinner"></span> Google Sheets에서 데이터를 불러오는 중...
 </div>
 
+<!-- PERIOD TABS -->
+<div class="period-tab-wrap">
+  <button class="tab-btn" data-period="daily" onclick="switchPeriod('daily')">📅 일별</button>
+  <button class="tab-btn active" data-period="weekly" onclick="switchPeriod('weekly')">📆 주별</button>
+  <button class="tab-btn" data-period="monthly" onclick="switchPeriod('monthly')">🗓 월별</button>
+  <span class="tab-label" id="tabLabel">주별 데이터 표시 중</span>
+</div>
+
 <!-- ALERT -->
 <div class="alert" id="alertBanner" style="display:none">
   <span>🚨</span><div id="alertText"></div>
@@ -125,26 +149,30 @@
   <!-- KPI 4개 -->
   <div class="kpi-row">
     <div class="kpi warn">
-      <div class="kpi-label">📊 이탈률 (최신)</div>
+      <div class="kpi-label">📊 이탈률</div>
       <div class="kpi-val red" id="kBounce">—</div>
+      <div class="kpi-change" id="kBounceChg"></div>
       <div class="kpi-note" id="kBounceNote">로딩 중</div>
       <span class="kpi-tag tag-red">⚠ 기준 50% 초과</span>
     </div>
     <div class="kpi">
-      <div class="kpi-label">👥 재방문률 (최신)</div>
+      <div class="kpi-label">👥 재방문률</div>
       <div class="kpi-val mint" id="kRevisit">—</div>
+      <div class="kpi-change" id="kRevisitChg"></div>
       <div class="kpi-note" id="kRevisitNote">로딩 중</div>
       <span class="kpi-tag tag-mint" id="kRevisitTag">기준 20% 이상</span>
     </div>
     <div class="kpi gold">
       <div class="kpi-label">🖱 핵심 슬롯 최고 CTR</div>
       <div class="kpi-val" id="kCTR" style="color:var(--yellow)">—</div>
+      <div class="kpi-change" id="kCTRChg"></div>
       <div class="kpi-note" id="kCTRNote">로딩 중</div>
       <span class="kpi-tag tag-gold" id="kCTRTag">—</span>
     </div>
     <div class="kpi warn">
-      <div class="kpi-label">📱 모바일 이탈률 (최신)</div>
+      <div class="kpi-label">📱 모바일 이탈률</div>
       <div class="kpi-val red" id="kMob">—</div>
+      <div class="kpi-change" id="kMobChg"></div>
       <div class="kpi-note" id="kMobNote">로딩 중</div>
       <span class="kpi-tag tag-red">PC 대비 비교</span>
     </div>
@@ -154,14 +182,14 @@
   <div class="grid2">
     <div class="card">
       <div class="card-head">
-        <div><div class="card-title">Q1. 이탈률 추이</div><div class="card-sub">bm_session_id 기준 · 기간별</div></div>
+        <div><div class="card-title">Q1. 이탈률 추이</div><div class="card-sub" id="subBounce">bm_session_id 기준</div></div>
         <span class="c-tag red">기준: 50% 경고</span>
       </div>
       <div class="chart-wrap h-200"><canvas id="cBounce"></canvas></div>
     </div>
     <div class="card">
       <div class="card-head">
-        <div><div class="card-title">Q5. 재방문률 & 평균 방문횟수</div><div class="card-sub">mem_no 기준 2회 이상</div></div>
+        <div><div class="card-title">Q5. 재방문률 & 평균 방문횟수</div><div class="card-sub" id="subRevisit">mem_no 기준 2회 이상</div></div>
         <span class="c-tag mint">기준: 20% 미만 경고</span>
       </div>
       <div class="chart-wrap h-200"><canvas id="cRevisit"></canvas></div>
@@ -172,14 +200,14 @@
   <div class="grid2">
     <div class="card">
       <div class="card-head">
-        <div><div class="card-title">Q2. 스크롤 깊이 분포</div><div class="card-sub">구간별 도달 세션 수</div></div>
+        <div><div class="card-title">Q2. 스크롤 깊이 분포</div><div class="card-sub" id="subScroll">구간별 도달 세션 수 (최신 기간)</div></div>
         <span class="c-tag gold">100% 도달 강조</span>
       </div>
       <div class="chart-wrap h-200"><canvas id="cScroll"></canvas></div>
     </div>
     <div class="card">
       <div class="card-head">
-        <div><div class="card-title">Q3. 핵심 슬롯별 CTR</div><div class="card-sub">SlotId 215·216·217·218·238</div></div>
+        <div><div class="card-title">Q3. 핵심 슬롯별 CTR</div><div class="card-sub" id="subCTR">SlotId 215·216·217·218·238</div></div>
         <span class="c-tag mint">노출 대비 클릭률</span>
       </div>
       <div class="slot-legend">
@@ -196,7 +224,7 @@
   <!-- Q4 체류시간 -->
   <div class="full card">
     <div class="card-head">
-      <div><div class="card-title">Q4. 화면별 평균 체류시간 (상위 20)</div><div class="card-sub">DwellTime · PageDwellTime 평균(초)</div></div>
+      <div><div class="card-title">Q4. 화면별 평균 체류시간 (상위 20)</div><div class="card-sub" id="subDwell">DwellTime · PageDwellTime 평균(초)</div></div>
       <span class="c-tag gold">목표: 90초</span>
     </div>
     <div class="chart-wrap h-400"><canvas id="cDwell"></canvas></div>
@@ -205,7 +233,7 @@
   <!-- Q6 업종별 버블 -->
   <div class="full card">
     <div class="card-head">
-      <div><div class="card-title">Q6. 업종별 클릭수 vs 체류시간</div><div class="card-sub">최신 기간 · X: 클릭수 / Y: 체류(초)</div></div>
+      <div><div class="card-title">Q6. 업종별 클릭수 vs 체류시간</div><div class="card-sub" id="subCategory">최신 기간 · X: 클릭수 / Y: 체류(초)</div></div>
       <span class="c-tag mint">버블 크기 = 상대 클릭수</span>
     </div>
     <div class="chart-wrap h-300"><canvas id="cCategory"></canvas></div>
@@ -214,7 +242,7 @@
   <!-- Q7 디바이스 -->
   <div class="full card">
     <div class="card-head">
-      <div><div class="card-title">Q7. PC vs 모바일 행동 비교</div><div class="card-sub">이탈률 · 체류시간 · CTR</div></div>
+      <div><div class="card-title">Q7. PC vs 모바일 행동 비교</div><div class="card-sub" id="subDevice">이탈률 · 체류시간 · CTR (최신 기간)</div></div>
       <span class="c-tag mint">pc vs mob</span>
     </div>
     <div class="chart-wrap h-240"><canvas id="cDevice"></canvas></div>
@@ -224,19 +252,19 @@
   <div class="insight-row">
     <div class="insight warn">
       <div class="ins-label">🚨 핵심 문제</div>
-      <div class="ins-text" id="insAlert">데이터 로딩 중...</div>
+      <div id="insAlert" class="ins-text">데이터 로딩 중...</div>
     </div>
     <div class="insight gold">
       <div class="ins-label">📌 CTR 인사이트</div>
-      <div class="ins-text" id="insCTR">데이터 로딩 중...</div>
+      <div id="insCTR" class="ins-text">데이터 로딩 중...</div>
     </div>
     <div class="insight">
       <div class="ins-label">💡 개선 액션</div>
-      <div class="ins-text" id="insAction">데이터 로딩 중...</div>
+      <div id="insAction" class="ins-text">데이터 로딩 중...</div>
     </div>
   </div>
 
-</div><!-- /dashboard -->
+</div>
 
 <div class="footer">
   배민 CEO 사이트 · 콘텐츠 집중도 대시보드 &nbsp;|&nbsp;
@@ -245,35 +273,123 @@
 </div>
 
 <script>
+// ═══════════════════════════════════════════════════
+//  전역 상태
+// ═══════════════════════════════════════════════════
 const CORE_SLOTS  = ['215','216','217','218','238'];
 const SLOT_NAMES  = {'215':'최신소식','216':'비즈팁','217':'노하우','218':'Q&A','238':'숏폼'};
 const SLOT_COLORS = {'215':'#00C4B3','216':'#F0A500','217':'#7C3AED','218':'#FF4D4F','238':'#10B981'};
 const MINT='#00C4B3', YELLOW='#F0A500', RED='#FF4D4F';
+
+let allData = null;            // 전체 데이터 캐시
+let currentPeriod = 'weekly'; // 'daily' | 'weekly' | 'monthly'
 const charts = {};
+
+const PERIOD_LABEL = { daily:'일별', weekly:'주별', monthly:'월별' };
+const PERIOD_DESC  = {
+  daily:   { bounce:'bm_session_id 기준 · 일별', revisit:'mem_no 기준 · 일별',
+             scroll:'구간별 도달 세션 (최신 일)', ctr:'슬롯 215·216·217·218·238 · 일별',
+             dwell:'DwellTime 평균(초) · 최신 일', category:'X:클릭수 / Y:체류(초) · 최신 일',
+             device:'이탈률·체류·CTR · 최신 일' },
+  weekly:  { bounce:'bm_session_id 기준 · 주별', revisit:'mem_no 기준 · 주별',
+             scroll:'구간별 도달 세션 (최신 주)', ctr:'슬롯 215·216·217·218·238 · 주별',
+             dwell:'DwellTime 평균(초) · 최신 주', category:'X:클릭수 / Y:체류(초) · 최신 주',
+             device:'이탈률·체류·CTR · 최신 주' },
+  monthly: { bounce:'bm_session_id 기준 · 월별', revisit:'mem_no 기준 · 월별',
+             scroll:'구간별 도달 세션 (최신 월)', ctr:'슬롯 215·216·217·218·238 · 월별',
+             dwell:'DwellTime 평균(초) · 최신 월', category:'X:클릭수 / Y:체류(초) · 최신 월',
+             device:'이탈률·체류·CTR · 최신 월' }
+};
 
 Chart.defaults.font.family = "'Apple SD Gothic Neo','Noto Sans KR',sans-serif";
 Chart.defaults.color = '#6B7280';
-
-// 공통 옵션: 반드시 maintainAspectRatio:false + responsive:true
 const BASE_OPT = { responsive:true, maintainAspectRatio:false };
 
-// ── 상태 표시 ────────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  기간 유형 판별 & 필터
+// ═══════════════════════════════════════════════════
+function getPeriodType(p) {
+  const s = String(p);
+  if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return 'daily';
+  if (s.includes('주차')) return 'weekly';
+  return 'monthly';
+}
+function filterRows(rows) {
+  return (rows||[]).filter(r => getPeriodType(r[0]) === currentPeriod);
+}
+function sortedPeriods(rows) {
+  return [...new Set(filterRows(rows).map(r=>r[0]))].sort();
+}
+
+// ═══════════════════════════════════════════════════
+//  변화율 유틸
+// ═══════════════════════════════════════════════════
+function fmtChange(curr, prev, inverse=false, unit='%p') {
+  if (prev == null || prev === 0) return '';
+  const diff = curr - prev;
+  const up = diff > 0;
+  const good = inverse ? !up : up;
+  const cls = good ? 'up-good' : 'up-bad';
+  return `<span class="${cls}">${up?'▲':'▼'}${Math.abs(diff).toFixed(1)}${unit} 전기간 대비</span>`;
+}
+function getLatest2(rows) {
+  const periods = sortedPeriods(rows);
+  const latest = periods[periods.length - 1];
+  const prev   = periods[periods.length - 2] || null;
+  return { latest, prev };
+}
+
+// ═══════════════════════════════════════════════════
+//  UI 헬퍼
+// ═══════════════════════════════════════════════════
 function setStatus(type, msg) {
   const el = document.getElementById('statusBar');
   el.className = 'status-bar ' + type;
   el.innerHTML = type === 'loading' ? `<span class="spinner"></span> ${msg}` : msg;
 }
+function mkChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  const canvas = document.getElementById(id);
+  charts[id] = new Chart(canvas, config);
+}
+function updateSubtitles() {
+  const d = PERIOD_DESC[currentPeriod];
+  document.getElementById('subBounce').textContent   = d.bounce;
+  document.getElementById('subRevisit').textContent  = d.revisit;
+  document.getElementById('subScroll').textContent   = d.scroll;
+  document.getElementById('subCTR').textContent      = d.ctr;
+  document.getElementById('subDwell').textContent    = d.dwell;
+  document.getElementById('subCategory').textContent = d.category;
+  document.getElementById('subDevice').textContent   = d.device;
+  document.getElementById('tabLabel').textContent    = `${PERIOD_LABEL[currentPeriod]}별 데이터 표시 중`;
+}
 
-// ── 데이터 로드 ──────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  탭 전환
+// ═══════════════════════════════════════════════════
+function switchPeriod(period) {
+  currentPeriod = period;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.period === period);
+  });
+  updateSubtitles();
+  if (allData) renderAll(allData);
+}
+
+// ═══════════════════════════════════════════════════
+//  데이터 로드
+// ═══════════════════════════════════════════════════
 function loadData() {
   const btn = document.getElementById('btnRefresh');
   btn.disabled = true;
   setStatus('loading', 'Google Sheets에서 데이터를 불러오는 중...');
   google.script.run
     .withSuccessHandler(function(data) {
+      allData = data;
       document.getElementById('lastUpdate').textContent =
         data._updated ? data._updated.slice(0,16).replace('T',' ') : '최신';
       setStatus('ok', '✅ 업데이트 완료 — ' + (data._updated || ''));
+      updateSubtitles();
       renderAll(data);
       btn.disabled = false;
     })
@@ -284,67 +400,69 @@ function loadData() {
     .getAllDataForClient();
 }
 
-// ── 전체 렌더 ────────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  전체 렌더
+// ═══════════════════════════════════════════════════
 function renderAll(d) {
-  renderBounce(d.bounce   || []);
-  renderRevisit(d.revisit || []);
-  renderScroll(d.scroll   || []);
-  renderCTR(d.ctr         || []);
-  renderDwell(d.dwell     || []);
+  document.getElementById('alertBanner').style.display = 'none';
+  renderBounce(d.bounce     || []);
+  renderRevisit(d.revisit   || []);
+  renderScroll(d.scroll     || []);
+  renderCTR(d.ctr           || []);
+  renderDwell(d.dwell       || []);
   renderCategory(d.category || []);
-  renderDevice(d.device   || []);
+  renderDevice(d.device     || []);
   updateKPI(d);
   updateInsights(d);
 }
 
-function mkChart(id, config) {
-  if (charts[id]) charts[id].destroy();
-  charts[id] = new Chart(document.getElementById(id), config);
-}
-
-// ── Q1 이탈률 라인 ────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  Q1 이탈률 라인
+// ═══════════════════════════════════════════════════
 function renderBounce(rows) {
+  const data = filterRows(rows);
   const seen = new Set();
-  const data = rows.filter(r => {
-    const p = String(r[0]);
-    if (seen.has(p)) return false; seen.add(p);
-    return !p.match(/^\d{4}-\d{2}-\d{2}$/);
-  });
+  const uniq = data.filter(r => { const p=String(r[0]); if(seen.has(p)) return false; seen.add(p); return true; });
+  if (!uniq.length) { showEmpty('cBounce'); return; }
   mkChart('cBounce', {
     type:'line',
     data:{
-      labels: data.map(r=>r[0]),
+      labels: uniq.map(r=>r[0]),
       datasets:[
-        {label:'이탈률(%)', data:data.map(r=>+r[3]),
+        {label:'이탈률(%)', data:uniq.map(r=>+r[3]),
          borderColor:RED, backgroundColor:'rgba(255,77,79,.08)',
          borderWidth:2.5, pointRadius:4, fill:true, tension:.3},
-        {label:'경고기준(50%)', data:data.map(()=>50),
+        {label:'경고기준(50%)', data:uniq.map(()=>50),
          borderColor:YELLOW, borderWidth:1.5, borderDash:[6,4], pointRadius:0, fill:false}
       ]
     },
     options:{...BASE_OPT,
       scales:{
-        y:{min:30,max:95, ticks:{callback:v=>v+'%'}, grid:{color:'#F0F0F5'}},
-        x:{grid:{display:false}}
+        y:{min:0, ticks:{callback:v=>v+'%'}, grid:{color:'#F0F0F5'}},
+        x:{grid:{display:false}, ticks:{maxRotation:45, font:{size:10}}}
       },
       plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}
     }
   });
 }
 
-// ── Q5 재방문률 ───────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  Q5 재방문률
+// ═══════════════════════════════════════════════════
 function renderRevisit(rows) {
+  const data = filterRows(rows);
   const seen = new Set();
-  const data = rows.filter(r => { const p=String(r[0]); if(seen.has(p)) return false; seen.add(p); return true; });
+  const uniq = data.filter(r => { const p=String(r[0]); if(seen.has(p)) return false; seen.add(p); return true; });
+  if (!uniq.length) { showEmpty('cRevisit'); return; }
   mkChart('cRevisit', {
     type:'bar',
     data:{
-      labels: data.map(r=>r[0]),
+      labels: uniq.map(r=>r[0]),
       datasets:[
-        {label:'재방문률(%)', data:data.map(r=>+r[3]),
-         backgroundColor:data.map(r=>+r[3]<20?'rgba(255,77,79,.7)':'rgba(0,196,179,.7)'),
+        {label:'재방문률(%)', data:uniq.map(r=>+r[3]),
+         backgroundColor:uniq.map(r=>+r[3]<20?'rgba(255,77,79,.7)':'rgba(0,196,179,.7)'),
          borderRadius:4, yAxisID:'y'},
-        {label:'평균 방문횟수', data:data.map(r=>parseFloat(r[4])),
+        {label:'평균 방문횟수', data:uniq.map(r=>parseFloat(r[4])||0),
          type:'line', borderColor:YELLOW, backgroundColor:'transparent',
          borderWidth:2, pointRadius:3, pointBackgroundColor:YELLOW, yAxisID:'y2'}
       ]
@@ -353,17 +471,22 @@ function renderRevisit(rows) {
       scales:{
         y:{position:'left', ticks:{callback:v=>v+'%'}, grid:{color:'#F0F0F5'}},
         y2:{position:'right', grid:{display:false}, ticks:{callback:v=>v+'회'}},
-        x:{grid:{display:false}}
+        x:{grid:{display:false}, ticks:{maxRotation:45, font:{size:10}}}
       },
       plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}
     }
   });
 }
 
-// ── Q2 스크롤 깊이 ────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  Q2 스크롤 깊이
+// ═══════════════════════════════════════════════════
 function renderScroll(rows) {
-  const latest = [...new Set(rows.map(r=>r[0]))].sort().reverse()[0];
-  const data = rows.filter(r=>r[0]===latest).sort((a,b)=>+a[1]-+b[1]);
+  const filtered = filterRows(rows);
+  const periods  = [...new Set(filtered.map(r=>r[0]))].sort();
+  const latest   = periods[periods.length-1];
+  const data     = filtered.filter(r=>r[0]===latest).sort((a,b)=>+a[1]-+b[1]);
+  if (!data.length) { showEmpty('cScroll'); return; }
   mkChart('cScroll', {
     type:'bar',
     data:{
@@ -392,11 +515,14 @@ function renderScroll(rows) {
   });
 }
 
-// ── Q3 슬롯 CTR 가로 막대 ─────────────────────────────
+// ═══════════════════════════════════════════════════
+//  Q3 슬롯 CTR
+// ═══════════════════════════════════════════════════
 function renderCTR(rows) {
-  const agg = {};
+  const data = filterRows(rows);
+  const agg  = {};
   CORE_SLOTS.forEach(s => agg[s]={imp:0,clk:0});
-  rows.forEach(r => {
+  data.forEach(r => {
     const sid = String(r[1]);
     if (agg[sid]) { agg[sid].imp += +r[5]||0; agg[sid].clk += +r[6]||0; }
   });
@@ -425,21 +551,25 @@ function renderCTR(rows) {
   });
 }
 
-// ── Q4 체류시간 가로 막대 ─────────────────────────────
+// ═══════════════════════════════════════════════════
+//  Q4 체류시간
+// ═══════════════════════════════════════════════════
 function renderDwell(rows) {
+  const data = filterRows(rows);
   const seen = new Set();
-  const top10 = rows
+  const top20 = data
     .filter(r => { const k=r[1]; if(seen.has(k)) return false; seen.add(k); return true; })
     .sort((a,b)=>+b[3]-+a[3]).slice(0,20).reverse();
+  if (!top20.length) { showEmpty('cDwell'); return; }
   mkChart('cDwell', {
     type:'bar',
     data:{
-      labels: top10.map(r=>r[1]),
+      labels: top20.map(r=>r[1]),
       datasets:[
-        {label:'평균 체류(초)', data:top10.map(r=>+r[3]),
-         backgroundColor:top10.map(r=>+r[3]>=90?'rgba(0,196,179,.75)':'rgba(240,165,0,.65)'),
+        {label:'평균 체류(초)', data:top20.map(r=>+r[3]),
+         backgroundColor:top20.map(r=>+r[3]>=90?'rgba(0,196,179,.75)':'rgba(240,165,0,.65)'),
          borderRadius:4, yAxisID:'y'},
-        {label:'목표선(90초)', data:top10.map(()=>90),
+        {label:'목표선(90초)', data:top20.map(()=>90),
          type:'line', borderColor:MINT, borderWidth:1.5, borderDash:[6,4],
          pointRadius:0, fill:false, yAxisID:'y'}
       ]
@@ -455,11 +585,16 @@ function renderDwell(rows) {
   });
 }
 
-// ── Q6 업종별 버블 ────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  Q6 업종별 버블
+// ═══════════════════════════════════════════════════
 function renderCategory(rows) {
   const COLORS = ['#00C4B3','#F0A500','#FF4D4F','#7C3AED','#10B981','#F97316','#0EA5E9','#EC4899','#84CC16','#6366F1'];
-  const latest = [...new Set(rows.map(r=>r[0]))].sort().reverse()[0];
-  const data = rows.filter(r=>r[0]===latest && r[1]);
+  const filtered = filterRows(rows);
+  const periods  = [...new Set(filtered.map(r=>r[0]))].sort();
+  const latest   = periods[periods.length-1];
+  const data     = filtered.filter(r=>r[0]===latest && r[1]);
+  if (!data.length) { showEmpty('cCategory'); return; }
   mkChart('cCategory', {
     type:'bubble',
     data:{
@@ -483,12 +618,17 @@ function renderCategory(rows) {
   });
 }
 
-// ── Q7 디바이스 비교 ──────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  Q7 디바이스
+// ═══════════════════════════════════════════════════
 function renderDevice(rows) {
-  const latest = [...new Set(rows.map(r=>r[0]))].sort().reverse()[0];
-  const pRows = rows.filter(r=>r[0]===latest);
+  const filtered = filterRows(rows);
+  const periods  = [...new Set(filtered.map(r=>r[0]))].sort();
+  const latest   = periods[periods.length-1];
+  const pRows    = filtered.filter(r=>r[0]===latest);
   const pc  = pRows.find(r=>r[1]==='pc')  || [0,0,0,0,0,0,0,0];
   const mob = pRows.find(r=>r[1]==='mob') || [0,0,0,0,0,0,0,0];
+  if (!pRows.length) { showEmpty('cDevice'); return; }
   mkChart('cDevice', {
     type:'bar',
     data:{
@@ -501,10 +641,7 @@ function renderDevice(rows) {
       ]
     },
     options:{...BASE_OPT,
-      scales:{
-        y:{grid:{color:'#F0F0F5'}},
-        x:{grid:{display:false}}
-      },
+      scales:{y:{grid:{color:'#F0F0F5'}}, x:{grid:{display:false}}},
       plugins:{
         legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}},
         title:{display:true, text:`기간: ${latest}`, font:{size:10}, color:'#6B7280', position:'bottom'}
@@ -513,85 +650,230 @@ function renderDevice(rows) {
   });
 }
 
-// ── KPI ──────────────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  데이터 없음 표시
+// ═══════════════════════════════════════════════════
+function showEmpty(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  const canvas = document.getElementById(id);
+  const wrap   = canvas.parentElement;
+  wrap.innerHTML = `<div class="no-data"><span>📭</span><span>${PERIOD_LABEL[currentPeriod]}별 데이터가 없습니다</span></div>`;
+}
+
+// ═══════════════════════════════════════════════════
+//  KPI 업데이트 (변화율 포함)
+// ═══════════════════════════════════════════════════
 function updateKPI(d) {
-  const br = d.bounce||[];
-  if (br.length) {
-    const latest = br.reduce((a,b)=>String(a[0])>String(b[0])?a:b);
-    document.getElementById('kBounce').textContent = (+latest[3]).toFixed(1)+'%';
-    document.getElementById('kBounceNote').textContent = '기간: '+latest[0];
-    if (+latest[3] > 50) {
+  // ── 이탈률 ──
+  const br = filterRows(d.bounce||[]);
+  const seen1=new Set(); const ubr=br.filter(r=>{if(seen1.has(r[0]))return false;seen1.add(r[0]);return true;});
+  const bPeriods = ubr.sort((a,b)=>String(a[0])>String(b[0])?1:-1);
+  const bLatest = bPeriods[bPeriods.length-1];
+  const bPrev   = bPeriods[bPeriods.length-2];
+  if (bLatest) {
+    const val = +bLatest[3];
+    document.getElementById('kBounce').textContent    = val.toFixed(1)+'%';
+    document.getElementById('kBounceNote').textContent = bLatest[0];
+    document.getElementById('kBounceChg').innerHTML   = bPrev ? fmtChange(val, +bPrev[3], true) : '';
+    if (val > 50) {
       document.getElementById('alertBanner').style.display='flex';
-      document.getElementById('alertText').innerHTML =
-        `<strong>이탈률 경고</strong> — ${latest[0]} 기준 <strong>${(+latest[3]).toFixed(1)}%</strong> (기준 50% 초과)`;
+      document.getElementById('alertText').innerHTML=
+        `<strong>이탈률 경고</strong> — ${bLatest[0]} 기준 <strong>${val.toFixed(1)}%</strong> (기준 50% 초과)`;
     }
   }
-  const rr = d.revisit||[];
-  if (rr.length) {
-    const seen=new Set(); const uniq=rr.filter(r=>{if(seen.has(r[0]))return false;seen.add(r[0]);return true;});
-    const latest=uniq.reduce((a,b)=>String(a[0])>String(b[0])?a:b);
-    const rate=+latest[3];
-    document.getElementById('kRevisit').textContent=rate.toFixed(1)+'%';
-    document.getElementById('kRevisitNote').textContent='기간: '+latest[0];
-    document.getElementById('kRevisitTag').textContent=rate<20?'⚠ 20% 미만 위험':'✓ 기준 이상 양호';
-    document.getElementById('kRevisitTag').className='kpi-tag '+(rate<20?'tag-red':'tag-mint');
+  // ── 재방문률 ──
+  const rr = filterRows(d.revisit||[]);
+  const seen2=new Set(); const urr=rr.filter(r=>{if(seen2.has(r[0]))return false;seen2.add(r[0]);return true;});
+  const rPeriods = urr.sort((a,b)=>String(a[0])>String(b[0])?1:-1);
+  const rLatest = rPeriods[rPeriods.length-1];
+  const rPrev   = rPeriods[rPeriods.length-2];
+  if (rLatest) {
+    const val = +rLatest[3];
+    document.getElementById('kRevisit').textContent    = val.toFixed(1)+'%';
+    document.getElementById('kRevisitNote').textContent = rLatest[0];
+    document.getElementById('kRevisitChg').innerHTML   = rPrev ? fmtChange(val, +rPrev[3], false) : '';
+    document.getElementById('kRevisitTag').textContent = val<20?'⚠ 20% 미만 위험':'✓ 기준 이상 양호';
+    document.getElementById('kRevisitTag').className   = 'kpi-tag '+(val<20?'tag-red':'tag-mint');
   }
-  const cr=d.ctr||[];
+  // ── CTR ──
+  const cr = filterRows(d.ctr||[]);
   if (cr.length) {
     const agg={};
     CORE_SLOTS.forEach(s=>agg[s]={imp:0,clk:0});
     cr.forEach(r=>{const sid=String(r[1]);if(agg[sid]){agg[sid].imp+=+r[5]||0;agg[sid].clk+=+r[6]||0;}});
     let best={s:'-',ctr:0};
     CORE_SLOTS.forEach(s=>{const c=agg[s].imp>0?agg[s].clk/agg[s].imp*100:0;if(c>best.ctr)best={s,ctr:c};});
-    document.getElementById('kCTR').textContent=best.ctr.toFixed(2)+'%';
-    document.getElementById('kCTRNote').textContent=`슬롯 ${best.s} · ${SLOT_NAMES[best.s]||''}`;
+    document.getElementById('kCTR').textContent     = best.ctr.toFixed(2)+'%';
+    document.getElementById('kCTRNote').textContent = `슬롯 ${best.s} · ${SLOT_NAMES[best.s]||''}`;
+    document.getElementById('kCTRTag').textContent  = `${PERIOD_LABEL[currentPeriod]} 누적`;
+    document.getElementById('kCTRChg').innerHTML    = '';
   }
-  const dr=d.device||[];
-  if (dr.length) {
-    const latest=[...new Set(dr.map(r=>r[0]))].sort().reverse()[0];
-    const mob=dr.find(r=>r[0]===latest&&r[1]==='mob');
-    const pc =dr.find(r=>r[0]===latest&&r[1]==='pc');
+  // ── 모바일 이탈률 ──
+  const dr = filterRows(d.device||[]);
+  const dPeriods = [...new Set(dr.map(r=>r[0]))].sort();
+  const dLatest = dPeriods[dPeriods.length-1];
+  const dPrev   = dPeriods[dPeriods.length-2];
+  if (dLatest) {
+    const mob  = dr.find(r=>r[0]===dLatest&&r[1]==='mob');
+    const pc   = dr.find(r=>r[0]===dLatest&&r[1]==='pc');
+    const mobP = dPrev ? dr.find(r=>r[0]===dPrev&&r[1]==='mob') : null;
     if (mob) {
-      document.getElementById('kMob').textContent=(+mob[3]).toFixed(1)+'%';
-      document.getElementById('kMobNote').textContent=`PC ${pc?(+pc[3]).toFixed(1)+'%':'—'} 대비`;
+      const val = +mob[3];
+      document.getElementById('kMob').textContent    = val.toFixed(1)+'%';
+      document.getElementById('kMobNote').textContent = `PC ${pc?(+pc[3]).toFixed(1)+'%':'—'} 대비`;
+      document.getElementById('kMobChg').innerHTML   = mobP ? fmtChange(val, +mobP[3], true) : '';
     }
   }
 }
 
-// ── 인사이트 ──────────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  인사이트 — 기간별 맥락 분석
+// ═══════════════════════════════════════════════════
 function updateInsights(d) {
-  const br=d.bounce||[];
+  const pLabel = PERIOD_LABEL[currentPeriod];
+
+  // ── 이탈률 데이터 ──
+  const br = filterRows(d.bounce||[]);
   const seen=new Set();
-  const ubr=br.filter(r=>{if(seen.has(r[0]))return false;seen.add(r[0]);return!String(r[0]).match(/^\d{4}-\d{2}-\d{2}$/)});
-  const latestB=ubr.length?ubr.reduce((a,b)=>String(a[0])>String(b[0])?a:b):null;
+  const ubr=br.filter(r=>{if(seen.has(r[0]))return false;seen.add(r[0]);return true;})
+             .sort((a,b)=>String(a[0])>String(b[0])?1:-1);
+  const bLatest = ubr[ubr.length-1];
+  const bPrev   = ubr[ubr.length-2];
+  const bVal    = bLatest ? +bLatest[3] : null;
+  const bPrevVal= bPrev   ? +bPrev[3]   : null;
+  const bDiff   = (bVal!=null && bPrevVal!=null) ? (bVal-bPrevVal).toFixed(1) : null;
 
-  const dr=d.device||[];
-  const lp=[...new Set(dr.map(r=>r[0]))].sort().reverse()[0];
-  const mob=dr.find(r=>r[0]===lp&&r[1]==='mob');
-  const sc=(d.scroll||[]).filter(r=>r[0]===lp&&+r[1]===100);
-  const s100=sc.length?sc[0][3]:'—';
+  // ── 모바일 / 스크롤 ──
+  const dr = filterRows(d.device||[]);
+  const dPeriods = [...new Set(dr.map(r=>r[0]))].sort();
+  const dLatest  = dPeriods[dPeriods.length-1];
+  const dPrev    = dPeriods[dPeriods.length-2];
+  const mob      = dr.find(r=>r[0]===dLatest&&r[1]==='mob');
+  const mobPrev  = dPrev ? dr.find(r=>r[0]===dPrev&&r[1]==='mob') : null;
 
-  document.getElementById('insAlert').innerHTML=
-    `이탈률 <strong>${latestB?(+latestB[3]).toFixed(1)+'%':'—'}</strong> (기준 50% 초과)<br>`+
-    `모바일 이탈률 <strong>${mob?(+mob[3]).toFixed(1)+'%':'—'}</strong><br>`+
-    `스크롤 100% 도달: <strong>${s100}%</strong>`;
+  const sc = filterRows(d.scroll||[]);
+  const sPeriods = [...new Set(sc.map(r=>r[0]))].sort();
+  const sLatest  = sPeriods[sPeriods.length-1];
+  const sPrev    = sPeriods[sPeriods.length-2];
+  const s100     = sc.filter(r=>r[0]===sLatest&&+r[1]===100);
+  const s100val  = s100.length ? +s100[0][3] : null;
+  const s100prev = sPrev ? sc.filter(r=>r[0]===sPrev&&+r[1]===100) : [];
+  const s100prevVal = s100prev.length ? +s100prev[0][3] : null;
 
+  // ── CTR 분석 ──
+  const cr = filterRows(d.ctr||[]);
   const agg={};
   CORE_SLOTS.forEach(s=>agg[s]={imp:0,clk:0});
-  (d.ctr||[]).forEach(r=>{const sid=String(r[1]);if(agg[sid]){agg[sid].imp+=+r[5]||0;agg[sid].clk+=+r[6]||0;}});
-  const ctrs=CORE_SLOTS.map(s=>({s,ctr:agg[s].imp>0?agg[s].clk/agg[s].imp*100:0})).sort((a,b)=>b.ctr-a.ctr);
-  document.getElementById('insCTR').innerHTML=
-    `슬롯${ctrs[0].s}(<strong>${ctrs[0].ctr.toFixed(2)}%</strong>) 최고<br>`+
-    `슬롯${ctrs[ctrs.length-1].s}(<strong>${ctrs[ctrs.length-1].ctr.toFixed(2)}%</strong>) 최저<br>`+
-    `최저 슬롯 제목·썸네일 개선 필요`;
+  cr.forEach(r=>{const sid=String(r[1]);if(agg[sid]){agg[sid].imp+=+r[5]||0;agg[sid].clk+=+r[6]||0;}});
+  const ctrs = CORE_SLOTS.map(s=>({s,ctr:agg[s].imp>0?agg[s].clk/agg[s].imp*100:0, imp:agg[s].imp, clk:agg[s].clk}))
+                          .sort((a,b)=>b.ctr-a.ctr);
+  const bestSlot  = ctrs[0];
+  const worstSlot = ctrs[ctrs.length-1];
 
-  const latest=[...new Set((d.category||[]).map(r=>r[0]))].sort().reverse()[0];
-  const topDwell=(d.category||[]).filter(r=>r[0]===latest&&r[1]).sort((a,b)=>+b[3]-+a[3]).slice(0,2).map(r=>`${r[1]}(${r[3]}초)`).join('·');
-  document.getElementById('insAction').innerHTML=
-    `<strong>${topDwell||'—'}</strong> 업종 콘텐츠 상단 배치<br>모바일 첫 화면 훅 강화<br>구독·푸시로 재방문 루프 강화`;
+  // ── 업종 분석 ──
+  const cat = filterRows(d.category||[]);
+  const catPeriods = [...new Set(cat.map(r=>r[0]))].sort();
+  const catLatest  = catPeriods[catPeriods.length-1];
+  const topCat = cat.filter(r=>r[0]===catLatest&&r[1]).sort((a,b)=>+b[3]-+a[3]).slice(0,3);
+
+  // ── 재방문 ──
+  const rr = filterRows(d.revisit||[]);
+  const seenR=new Set();
+  const urr=rr.filter(r=>{if(seenR.has(r[0]))return false;seenR.add(r[0]);return true;})
+              .sort((a,b)=>String(a[0])>String(b[0])?1:-1);
+  const rLatest = urr[urr.length-1];
+  const rPrev   = urr[urr.length-2];
+  const rVal    = rLatest ? +rLatest[3] : null;
+  const rPrevVal= rPrev   ? +rPrev[3]   : null;
+
+  // ── 기간별 메시지 생성 ──
+  let insAlert='', insCTR='', insAction='';
+
+  // 공통: 이탈률 변화 방향
+  const bArrow = bDiff!=null ? (bDiff>0 ? `<span class="up-bad">▲${bDiff}%p</span>` : `<span class="up-good">▼${Math.abs(bDiff)}%p</span>`) : '';
+  const bStatus = bVal!=null ? (bVal>50 ? '⚠️ 기준 초과 (즉시 개선)' : '✅ 기준 이하 유지') : '—';
+
+  if (currentPeriod === 'daily') {
+    // 일별 인사이트
+    insAlert =
+      `<strong>오늘 이탈률</strong> ${bVal!=null?bVal.toFixed(1)+'%':'—'} ${bArrow}<br>` +
+      `전일 ${bPrevVal!=null?bPrevVal.toFixed(1)+'%':'—'} → ${bStatus}<br>` +
+      `모바일 이탈률 ${mob?(+mob[3]).toFixed(1)+'%':'—'}` +
+      (mobPrev ? ` (전일 ${(+mobPrev[3]).toFixed(1)}%)` : '') + `<br>` +
+      `스크롤 100% 도달: ${s100val!=null?s100val+'%':'—'}`;
+
+    insCTR =
+      `<strong>오늘 최고 슬롯: ${bestSlot.s} ${SLOT_NAMES[bestSlot.s]}</strong><br>` +
+      `CTR ${bestSlot.ctr.toFixed(2)}% (노출 ${bestSlot.imp.toLocaleString()})<br>` +
+      `<hr class="ins-divider">` +
+      `최저 슬롯: ${worstSlot.s} ${SLOT_NAMES[worstSlot.s]} — ${worstSlot.ctr.toFixed(2)}%<br>` +
+      `→ 제목·썸네일 즉시 점검 필요`;
+
+    insAction =
+      `📌 <strong>즉시 확인 필요</strong><br>` +
+      (bVal!=null && bVal>50 ? `⚠ 이탈률 ${bVal.toFixed(1)}% — 메인 콘텐츠 훅 강화<br>` : '') +
+      `📱 모바일 첫 화면 배너 클릭유도 개선<br>` +
+      `🔁 슬롯${worstSlot.s} 콘텐츠 교체 검토`;
+
+  } else if (currentPeriod === 'weekly') {
+    // 주별 인사이트
+    const weekStatus = bDiff!=null ? (bDiff>0 ? '전주 대비 악화' : '전주 대비 개선') : '';
+    insAlert =
+      `<strong>이번 주 이탈률</strong> ${bVal!=null?bVal.toFixed(1)+'%':'—'} ${bArrow} ${weekStatus}<br>` +
+      `전주 ${bPrevVal!=null?bPrevVal.toFixed(1)+'%':'—'} → ${bStatus}<br>` +
+      `모바일 이탈률 ${mob?(+mob[3]).toFixed(1)+'%':'—'}` +
+      (mobPrev ? ` (전주 대비 ${((+mob[3])-(+mobPrev[3])).toFixed(1)}%p)` : '') + `<br>` +
+      `스크롤 100% 도달: ${s100val!=null?s100val+'%':'—'}` +
+      (s100prevVal!=null ? ` (전주 ${s100prevVal}%)` : '');
+
+    insCTR =
+      `<strong>주간 최고 슬롯: ${bestSlot.s} ${SLOT_NAMES[bestSlot.s]}</strong><br>` +
+      `CTR ${bestSlot.ctr.toFixed(2)}% | 클릭 ${bestSlot.clk.toLocaleString()}회<br>` +
+      `<hr class="ins-divider">` +
+      `최저 슬롯: ${worstSlot.s} ${SLOT_NAMES[worstSlot.s]} — ${worstSlot.ctr.toFixed(2)}%<br>` +
+      `최고↔최저 격차: ${(bestSlot.ctr-worstSlot.ctr).toFixed(2)}%p → 슬롯 개선 여지`;
+
+    const reChg = (rVal!=null&&rPrevVal!=null) ? `전주 ${rPrevVal.toFixed(1)}% → ${rVal.toFixed(1)}%` : '';
+    insAction =
+      `📋 <strong>이번 주 우선순위</strong><br>` +
+      `재방문률 ${rVal!=null?rVal.toFixed(1)+'%':'—'} ${reChg ? '('+reChg+')' : ''}<br>` +
+      (topCat.length ? `체류 상위 업종: <strong>${topCat.map(r=>r[1]).join('·')}</strong><br>` : '') +
+      `→ 해당 업종 콘텐츠 슬롯 상단 노출 강화`;
+
+  } else {
+    // 월별 인사이트
+    const monStatus = bDiff!=null ? (bDiff>0 ? '전월 대비 악화' : '전월 대비 개선') : '';
+    insAlert =
+      `<strong>이번 달 이탈률</strong> ${bVal!=null?bVal.toFixed(1)+'%':'—'} ${bArrow} ${monStatus}<br>` +
+      `전월 ${bPrevVal!=null?bPrevVal.toFixed(1)+'%':'—'} → ${bStatus}<br>` +
+      `모바일 이탈률 ${mob?(+mob[3]).toFixed(1)+'%':'—'}` +
+      (mobPrev ? ` (전월 대비 ${((+mob[3])-(+mobPrev[3])).toFixed(1)}%p)` : '') + `<br>` +
+      `스크롤 100% 도달: ${s100val!=null?s100val+'%':'—'}` +
+      (s100prevVal!=null ? ` (전월 ${s100prevVal}%)` : '');
+
+    insCTR =
+      `<strong>월간 누적 최고: 슬롯${bestSlot.s} ${SLOT_NAMES[bestSlot.s]}</strong><br>` +
+      `CTR ${bestSlot.ctr.toFixed(2)}% | 클릭 ${bestSlot.clk.toLocaleString()}회 (전체 노출 ${bestSlot.imp.toLocaleString()})<br>` +
+      `<hr class="ins-divider">` +
+      `최저: 슬롯${worstSlot.s} ${SLOT_NAMES[worstSlot.s]} — ${worstSlot.ctr.toFixed(2)}%<br>` +
+      `→ 다음 달 콘텐츠 방향성 재검토`;
+
+    const reChg = (rVal!=null&&rPrevVal!=null) ? `전월 대비 ${(rVal-rPrevVal).toFixed(1)}%p` : '';
+    insAction =
+      `📊 <strong>다음 달 전략</strong><br>` +
+      `재방문률 ${rVal!=null?rVal.toFixed(1)+'%':'—'} ${reChg ? '('+reChg+')' : ''}<br>` +
+      (topCat.length ? `월간 체류 상위: <strong>${topCat.map(r=>r[1]).join('·')}</strong><br>` : '') +
+      `→ 상위 업종 시리즈 콘텐츠 기획 + 카카오채널 연동`;
+  }
+
+  document.getElementById('insAlert').innerHTML  = insAlert  || `${pLabel}별 데이터 없음`;
+  document.getElementById('insCTR').innerHTML    = insCTR   || `${pLabel}별 데이터 없음`;
+  document.getElementById('insAction').innerHTML = insAction || `${pLabel}별 데이터 없음`;
 }
 
-// ── 초기 로드 ─────────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  초기 로드
+// ═══════════════════════════════════════════════════
 loadData();
 </script>
 </body>
