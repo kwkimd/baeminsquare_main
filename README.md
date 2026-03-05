@@ -2,25 +2,19 @@
 
 ceo.baemin.com 메인페이지 외식업 콘텐츠 집중도 분석 대시보드입니다.
 
-## 라이브 대시보드
+## 라이브 대시보드 (woowahan.com 계정 필요)
 
-👉 **[대시보드 바로보기](https://kwkimd.github.io/baeminsquare_main/)**
+👉 **[대시보드 바로보기](https://script.google.com/a/macros/woowahan.com/s/AKfycbxE1bHMx9_O4Sb-4cKgaHCZE7rs7eHco10VzILL6yH7LjKimmkiTPhvwKM7aNwLwNKAbg/exec)**
+
+> woowahan.com Google 계정으로 로그인 후 접근 가능합니다.
 
 ## 구성
 
 | 파일 | 설명 |
 |------|------|
-| docs/index.html | GitHub Pages 대시보드 (Chart.js) |
-| pps_script/Code.gs | Google Apps Script - Sheets → JSON API |
-
-## 데이터 연동 방법
-
-1. Google Sheets 열기 → 확장 프로그램 → Apps Script
-2. pps_script/Code.gs 코드 붙여넣기
-3. 배포 → 새 배포 → **웹 앱** (실행 계정: 나, 액세스: 모든 사용자)
-4. 배포 URL 복사
-5. docs/index.html 상단 APPS_SCRIPT_URL = '' 에 URL 붙여넣기
-6. 파일 다시 업로드
+| `apps_script/Code.gs` | Google Apps Script 서버 - Sheets 데이터 + HTML 서빙 |
+| `apps_script/Dashboard.html` | 대시보드 UI (Chart.js, google.script.run) |
+| `docs/index.html` | GitHub Pages 버전 (참고용) |
 
 ## 분석 지표 (7개)
 
@@ -35,8 +29,8 @@ ceo.baemin.com 메인페이지 외식업 콘텐츠 집중도 분석 대시보드
 ## 기술 스택
 
 - Chart.js 4.4.0 (CDN)
-- Google Apps Script (Web App API)
-- GitHub Pages
+- Google Apps Script (HtmlService + google.script.run)
+- Google Sheets (자동 데이터 파이프라인)
 
 ---
 배민 마케팅 데이터 분석팀
