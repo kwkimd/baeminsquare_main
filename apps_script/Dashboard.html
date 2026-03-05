@@ -79,6 +79,7 @@
   .h-240{height:240px}
   .h-280{height:280px}
   .h-300{height:300px}
+  .h-400{height:400px}
 
   /* INSIGHT */
   .insight-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
@@ -195,10 +196,10 @@
   <!-- Q4 체류시간 -->
   <div class="full card">
     <div class="card-head">
-      <div><div class="card-title">Q4. 화면별 평균 체류시간 (상위 10)</div><div class="card-sub">DwellTime · PageDwellTime 평균(초)</div></div>
+      <div><div class="card-title">Q4. 화면별 평균 체류시간 (상위 20)</div><div class="card-sub">DwellTime · PageDwellTime 평균(초)</div></div>
       <span class="c-tag gold">목표: 90초</span>
     </div>
-    <div class="chart-wrap h-280"><canvas id="cDwell"></canvas></div>
+    <div class="chart-wrap h-400"><canvas id="cDwell"></canvas></div>
   </div>
 
   <!-- Q6 업종별 버블 -->
@@ -429,7 +430,7 @@ function renderDwell(rows) {
   const seen = new Set();
   const top10 = rows
     .filter(r => { const k=r[1]; if(seen.has(k)) return false; seen.add(k); return true; })
-    .sort((a,b)=>+b[3]-+a[3]).slice(0,10).reverse();
+    .sort((a,b)=>+b[3]-+a[3]).slice(0,20).reverse();
   mkChart('cDwell', {
     type:'bar',
     data:{
